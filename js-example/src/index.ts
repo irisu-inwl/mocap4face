@@ -9,6 +9,7 @@ import {
     Quaternion,
     ResourceFileSystem,
     Vec2,
+    kotlin
 } from '@0xalter/mocap4face'
 import './styles/main.scss'
 
@@ -20,6 +21,9 @@ const contentElement = document.getElementById('blendshapes')!
 const statusElement = document.getElementById('status')!
 const fpsElement = document.getElementById('fps')
 const fallbackVideo = videoElement.currentSrc
+const imageVTuberElement = document.getElementById('imageVTuber') as HTMLImageElement
+
+let isRun = false
 
 function startTracking() {
     const faceRectangleElement = document.getElementById('rectangle')
@@ -152,6 +156,10 @@ function startTracking() {
             // hasFace() checks whether the tracker is confident enough about the detection.
             // You can also read the confidence value itself by checking lastResult.confidence
             setFaceRectangleVisible(lastResult.hasFace())
+            const vRect = lastResult.faceRectangle
+                .flipY(lastResult.inputImageSize.y)
+                .normalizeBy(lastResult.inputImageSize)
+            getVTuberImage(lastResult.blendshapes, rotationBlendshapes, vRect)
         }
 
         // Update FPS counter
@@ -207,6 +215,103 @@ function startTracking() {
             ['headRollLeft', -Math.min(0, euler.z) / halfPi],
             ['headRollRight', Math.max(0, euler.z) / halfPi],
         ]
+    }
+
+    async function getVTuberImage(blendshapes: any, rotationBlendshapes: any, rect: any) {
+        function create_body(blendshapes: any, rotationBlendshapes: any, rect:any): object {
+            const blendshapeMap = blendshapes.o2d_1
+            // eye
+            const eyebrowLeft = blendshapeMap.get('browDown_L')
+            const eyebrowRight = blendshapeMap.get('browDown_R')
+            const eyeLeft = blendshapeMap.get('eyeBlink_L')
+            const eyeRight = blendshapeMap.get('eyeBlink_R')
+            // mouth
+            const jawOpen = blendshapeMap.get('jawOpen')
+            const mouthLowerDown = Math.min(
+                blendshapeMap.get('mouthLowerDown_L'), blendshapeMap.get('mouthLowerDown_R')
+            )
+            const mouthUpperUp = Math.min(
+                blendshapeMap.get('mouthUpperUp_L'), blendshapeMap.get('mouthUpperUp_R')
+            )
+            const mouthSmileL = blendshapeMap.get('mouthSmile_L')
+            const mouthSmileR = blendshapeMap.get('mouthSmile_R')
+            let mouthDropdown
+            let mouthValue
+            if ( Math.min(mouthSmileL, mouthSmileR) > 0.5 ) {
+                mouthDropdown = "eee"
+                mouthValue = Math.max(mouthSmileL, mouthSmileR)
+            } else {
+                mouthDropdown = "aaa"
+                mouthValue = Math.max(mouthLowerDown, jawOpen, mouthUpperUp)
+            }
+            const mouthLeft = blendshapeMap.get('mouthUpperUp_L')
+            const mouthRight = blendshapeMap.get('mouthUpperUp_R')
+            
+
+            const eyeLookUpL = blendshapeMap.get('eyeLookUp_L') ?? 0.0
+            const eyeLookDownL = blendshapeMap.get('eyeLookDown_L') ?? 0.0
+            const irisRotationY = eyeLookUpL - eyeLookDownL
+            const headUp = rotationBlendshapes[2][1]
+            const headDown = rotationBlendshapes[3][1]
+            const headX = headUp - headDown
+            const headRollLeft = rotationBlendshapes[4][1]
+            const headRollRight = rotationBlendshapes[5][1]
+            const headY = headRollRight - headRollLeft
+            const headLeft = rotationBlendshapes[0][1]
+            const headRight = rotationBlendshapes[1][1]
+            const neckZ = headRight - headLeft
+            
+            const bodyZ = 1.0 - 2 * (rect.x)
+            
+            // console.log(rotationBlendshapes)
+            console.log(rect)
+            const data = {
+                "params": {
+                    "eyebrow_dropdown": "happy",
+                    "eyebrow_left": eyebrowLeft,
+                    "eyebrow_right": eyebrowRight,
+                    "eye_dropdown":"happy_wink",
+                    "eye_left": eyeLeft,
+                    "eye_right":eyeRight,
+                    "mouth_dropdown": mouthDropdown,
+                    "mouth_left": mouthValue,
+                    "mouth_right": 0.0,
+                    "iris_small_left": 0.0,
+                    "iris_small_right": 0.0,
+                    "iris_rotation_x": 0.0,
+                    "iris_rotation_y": irisRotationY,
+                    "head_x": headX,
+                    "head_y": headY,
+                    "neck_z": neckZ,
+                    "body_y": 0.0,
+                    "body_z": bodyZ,
+                    "breathing": 0.0,
+                }
+            }
+            // console.log(eyeLeft)
+            console.log(bodyZ)
+            return data
+        }
+        
+        if( isRun ) return;
+        isRun = true;
+
+        const data = create_body(blendshapes, rotationBlendshapes, rect)
+
+        await fetch("http://localhost:5000/execution", {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(data),
+        })
+        // fetch("http://localhost:5000")
+        .then(res => res.blob())
+        .then(blobRes => {
+            const fileUrl = URL.createObjectURL(blobRes)
+            imageVTuberElement.src = fileUrl
+        })
+        isRun = false;
     }
 }
 
@@ -267,6 +372,7 @@ function hideLoading() {
     webcamButton.classList.remove('loading')
     videoElement.classList.remove('hidden', 'loading')
     videoElement.parentElement?.classList?.remove('loading')
+    videoElement.play()
 }
 
 // Handle webcam button
@@ -282,6 +388,7 @@ webcamButton.addEventListener('click', () => {
                 webcamButton.title = 'Disable webcam'
                 webcamButton.classList.remove('webcam_error')
                 webcamButton.classList.add('disable_webcam')
+                videoElement.play()
                 return
             })
             // fallback to test video if user blocked the camera or it is not available for some reason
@@ -300,6 +407,7 @@ webcamButton.addEventListener('click', () => {
         videoElement.setAttribute('src', fallbackVideo)
         videoElement.parentElement?.classList.remove('webcam')
         videoElement.parentElement?.classList.add('video')
+        videoElement.play()
     }
 })
 

@@ -12,17 +12,18 @@
     <div class="container">
       <div class="row header">
         <div class="col title">
-          <h1>mocap4face</h1>
-          <h3>by <a href="https://twitter.com/alterz" class="link dimmed">alter</a></h3>
+          <h1>mocap4face+talking-head-anime-3</h1>
         </div>
       </div>
       <div class="row demo">
-        <div class="col source loading video">
-          <video id="videoSource" class="hidden" autoplay loop muted playsinline>
-            <source src="m4f.mp4" type="video/mp4">
-            Your browser does not support the video tag.
-          </video>
-          <div class="overlay">
+        <div class="col2 source loading video">
+          <div class="hidden">
+            <video id="videoSource" class="hidden" autoplay loop muted playsinline>
+              <source src="m4f.mp4" type="video/mp4">
+              Your browser does not support the video tag.
+            </video>
+          </div>
+          <div class="overlay hidden">
             <div id="rectangle" class="rect" style="display: none;"></div>
             <code class="status loading" id="status">
               <span>Wait a few secs...</span>
@@ -109,6 +110,11 @@
             </li>
           </ul>
         </div>
+        <div class="col">
+          <img id="imageVTuber" crossorigin="anonymous">
+          </img>
+        </div>
+
       </div>
       <div class="row description">
         <div class="col">

@@ -186,6 +186,9 @@ small {
 .col {
   display: flex;
 }
+.col2 {
+  display: flex;
+}
 
 .row {
   flex-direction: column;
@@ -201,7 +204,16 @@ small {
   flex-direction: column;
 
   @media only screen and (min-width: $breakpoint-medium) {
-    width: 50%;
+    width: 40%;
+  }
+}
+
+.col2 {
+  width: 100%;
+  flex-direction: column;
+
+  @media only screen and (min-width: $breakpoint-medium) {
+    width: 10%;
   }
 }
 
